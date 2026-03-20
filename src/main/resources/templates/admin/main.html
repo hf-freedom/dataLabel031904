@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>管理后台 - 数据标注系统</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Microsoft YaHei', sans-serif; background: #f5f5f5; }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .header h1 { font-size: 20px; }
+        .header .user-info { display: flex; align-items: center; gap: 15px; }
+        .header .logout-btn {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .container { display: flex; min-height: calc(100vh - 60px); }
+        .sidebar {
+            width: 200px;
+            background: white;
+            box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+        }
+        .sidebar ul { list-style: none; }
+        .sidebar li {
+            padding: 15px 20px;
+            cursor: pointer;
+            border-bottom: 1px solid #eee;
+            transition: background 0.3s;
+        }
+        .sidebar li:hover, .sidebar li.active {
+            background: #f0f0ff;
+            color: #667eea;
+        }
+        .main-content {
+            flex: 1;
+            padding: 20px;
+        }
+        .page { display: none; }
+        .page.active { display: block; }
+        .card {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .card h3 { margin-bottom: 15px; color: #333; }
+        .toolbar { margin-bottom: 15px; }
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .btn-primary { background: #667eea; color: white; }
+        .btn-danger { background: #e74c3c; color: white; }
+        .btn-success { background: #27ae60; color: white; }
+        .btn-sm { padding: 5px 10px; font-size: 12px; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #eee; }
+        th { background: #f8f9fa; font-weight: 600; }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            justify-content: center;
+            align-items: center;
+        }
+        .modal.show { display: flex; }
+        .modal-content {
+            background: white;
+            padding: 25px;
+            border-radius: 8px;
+            width: 450px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        .modal-content h3 { margin-bottom: 20px; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; color: #555; }
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .modal-actions { margin-top: 20px; text-align: right; }
+        .modal-actions .btn { margin-left: 10px; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>数据标注系统 - 管理后台</h1>
+        <div class="user-info">
+            <span id="currentUserName">管理员</span>
+            <a href="/logout" class="logout-btn">退出登录</a>
+        </div>
+    </div>
+    <div class="container">
+        <div class="sidebar">
+            <ul>
+                <li class="active" data-page="user">用户管理</li>
+                <li data-page="role">角色管理</li>
+                <li data-page="org">组织机构</li>
+            </ul>
+        </div>
+        <div class="main-content">
+            <div id="userPage" class="page active">
+                <div class="card">
+                    <h3>用户管理</h3>
+                    <div class="toolbar">
+                        <button class="btn btn-primary" onclick="showUserModal()">新增用户</button>
+                    </div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>用户名</th>
+                                <th>姓名</th>
+                                <th>邮箱</th>
+                                <th>电话</th>
+                                <th>类型</th>
+                                <th>角色</th>
+                                <th>组织机构</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="userTable"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div id="rolePage" class="page">
+                <div class="card">
+                    <h3>角色管理</h3>
+                    <div class="toolbar">
+                        <button class="btn btn-primary" onclick="showRoleModal()">新增角色</button>
+                    </div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>角色名称</th>
+                                <th>角色编码</th>
+                                <th>描述</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="roleTable"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div id="orgPage" class="page">
+                <div class="card">
+                    <h3>组织机构管理</h3>
+                    <div class="toolbar">
+                        <button class="btn btn-primary" onclick="showOrgModal()">新增机构</button>
+                    </div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>机构名称</th>
+                                <th>机构编码</th>
+                                <th>层级</th>
+                                <th>描述</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="orgTable"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="userModal" class="modal">
+        <div class="modal-content">
+            <h3 id="userModalTitle">新增用户</h3>
+            <input type="hidden" id="userId">
+            <div class="form-group">
+                <label>用户名</label>
+                <input type="text" id="userUsername">
+            </div>
+            <div class="form-group">
+                <label>密码</label>
+                <input type="password" id="userPassword" placeholder="留空则不修改">
+            </div>
+            <div class="form-group">
+                <label>姓名</label>
+                <input type="text" id="userRealName">
+            </div>
+            <div class="form-group">
+                <label>邮箱</label>
+                <input type="email" id="userEmail">
+            </div>
+            <div class="form-group">
+                <label>电话</label>
+                <input type="text" id="userPhone">
+            </div>
+            <div class="form-group">
+                <label>用户类型</label>
+                <select id="userTypeSelect">
+                    <option value="0">普通用户</option>
+                    <option value="1">管理员</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>绑定角色</label>
+                <select id="userRole"></select>
+            </div>
+            <div class="form-group">
+                <label>绑定组织机构</label>
+                <select id="userOrg"></select>
+            </div>
+            <div class="modal-actions">
+                <button class="btn" onclick="closeUserModal()">取消</button>
+                <button class="btn btn-primary" onclick="saveUser()">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="roleModal" class="modal">
+        <div class="modal-content">
+            <h3 id="roleModalTitle">新增角色</h3>
+            <input type="hidden" id="roleId">
+            <div class="form-group">
+                <label>角色名称</label>
+                <input type="text" id="roleName">
+            </div>
+            <div class="form-group">
+                <label>角色编码</label>
+                <input type="text" id="roleCode">
+            </div>
+            <div class="form-group">
+                <label>描述</label>
+                <textarea id="roleDesc" rows="3"></textarea>
+            </div>
+            <div class="modal-actions">
+                <button class="btn" onclick="closeRoleModal()">取消</button>
+                <button class="btn btn-primary" onclick="saveRole()">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="orgModal" class="modal">
+        <div class="modal-content">
+            <h3 id="orgModalTitle">新增机构</h3>
+            <input type="hidden" id="orgId">
+            <div class="form-group">
+                <label>机构名称</label>
+                <input type="text" id="orgName">
+            </div>
+            <div class="form-group">
+                <label>机构编码</label>
+                <input type="text" id="orgCode">
+            </div>
+            <div class="form-group">
+                <label>上级机构</label>
+                <select id="orgParent"></select>
+            </div>
+            <div class="form-group">
+                <label>描述</label>
+                <textarea id="orgDesc" rows="3"></textarea>
+            </div>
+            <div class="modal-actions">
+                <button class="btn" onclick="closeOrgModal()">取消</button>
+                <button class="btn btn-primary" onclick="saveOrg()">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        var roles = [];
+        var orgs = [];
+
+        document.querySelectorAll('.sidebar li').forEach(function(li) {
+            li.addEventListener('click', function() {
+                document.querySelectorAll('.sidebar li').forEach(function(l) { l.classList.remove('active'); });
+                document.querySelectorAll('.page').forEach(function(p) { p.classList.remove('active'); });
+                this.classList.add('active');
+                var page = this.getAttribute('data-page');
+                document.getElementById(page + 'Page').classList.add('active');
+                if (page === 'user') loadUsers();
+                else if (page === 'role') loadRoles();
+                else if (page === 'org') loadOrgs();
+            });
+        });
+
+        function loadUsers() {
+            Promise.all([
+                fetch('/api/user/list').then(r => r.json()),
+                fetch('/api/role/list').then(r => r.json()),
+                fetch('/api/org/list').then(r => r.json())
+            ]).then(function(results) {
+                var users = results[0].data || [];
+                roles = results[1].data || [];
+                orgs = results[2].data || [];
+                var tbody = document.getElementById('userTable');
+                tbody.innerHTML = '';
+                users.forEach(function(user) {
+                    var roleName = '';
+                    var orgName = '';
+                    roles.forEach(function(r) { if (r.id === user.roleId) roleName = r.name; });
+                    orgs.forEach(function(o) { if (o.id === user.organizationId) orgName = o.name; });
+                    tbody.innerHTML += '<tr>' +
+                        '<td>' + user.id + '</td>' +
+                        '<td>' + user.username + '</td>' +
+                        '<td>' + (user.realName || '') + '</td>' +
+                        '<td>' + (user.email || '') + '</td>' +
+                        '<td>' + (user.phone || '') + '</td>' +
+                        '<td>' + (user.userType === 1 ? '管理员' : '普通用户') + '</td>' +
+                        '<td>' + roleName + '</td>' +
+                        '<td>' + orgName + '</td>' +
+                        '<td>' +
+                            '<button class="btn btn-sm btn-primary" onclick="editUser(' + user.id + ')">编辑</button> ' +
+                            '<button class="btn btn-sm btn-danger" onclick="deleteUser(' + user.id + ')">删除</button>' +
+                        '</td></tr>';
+                });
+            });
+        }
+
+        function loadRoles() {
+            fetch('/api/role/list').then(r => r.json()).then(function(result) {
+                var roles = result.data || [];
+                var tbody = document.getElementById('roleTable');
+                tbody.innerHTML = '';
+                roles.forEach(function(role) {
+                    tbody.innerHTML += '<tr>' +
+                        '<td>' + role.id + '</td>' +
+                        '<td>' + role.name + '</td>' +
+                        '<td>' + role.code + '</td>' +
+                        '<td>' + (role.description || '') + '</td>' +
+                        '<td>' +
+                            '<button class="btn btn-sm btn-primary" onclick="editRole(' + role.id + ')">编辑</button> ' +
+                            '<button class="btn btn-sm btn-danger" onclick="deleteRole(' + role.id + ')">删除</button>' +
+                        '</td></tr>';
+                });
+            });
+        }
+
+        function loadOrgs() {
+            fetch('/api/org/list').then(r => r.json()).then(function(result) {
+                var orgs = result.data || [];
+                var tbody = document.getElementById('orgTable');
+                tbody.innerHTML = '';
+                orgs.forEach(function(org) {
+                    tbody.innerHTML += '<tr>' +
+                        '<td>' + org.id + '</td>' +
+                        '<td>' + org.name + '</td>' +
+                        '<td>' + org.code + '</td>' +
+                        '<td>' + (org.level || 1) + '</td>' +
+                        '<td>' + (org.description || '') + '</td>' +
+                        '<td>' +
+                            '<button class="btn btn-sm btn-primary" onclick="editOrg(' + org.id + ')">编辑</button> ' +
+                            '<button class="btn btn-sm btn-danger" onclick="deleteOrg(' + org.id + ')">删除</button>' +
+                        '</td></tr>';
+                });
+            });
+        }
+
+        function showUserModal(id) {
+            document.getElementById('userModalTitle').textContent = id ? '编辑用户' : '新增用户';
+            document.getElementById('userId').value = id || '';
+            document.getElementById('userUsername').value = '';
+            document.getElementById('userPassword').value = '';
+            document.getElementById('userRealName').value = '';
+            document.getElementById('userEmail').value = '';
+            document.getElementById('userPhone').value = '';
+            document.getElementById('userTypeSelect').value = '0';
+            
+            var roleSelect = document.getElementById('userRole');
+            roleSelect.innerHTML = '<option value="">请选择角色</option>';
+            roles.forEach(function(r) { roleSelect.innerHTML += '<option value="' + r.id + '">' + r.name + '</option>'; });
+            
+            var orgSelect = document.getElementById('userOrg');
+            orgSelect.innerHTML = '<option value="">请选择组织机构</option>';
+            orgs.forEach(function(o) { orgSelect.innerHTML += '<option value="' + o.id + '">' + o.name + '</option>'; });
+            
+            if (id) {
+                fetch('/api/user/' + id).then(r => r.json()).then(function(result) {
+                    var user = result.data;
+                    document.getElementById('userUsername').value = user.username;
+                    document.getElementById('userRealName').value = user.realName || '';
+                    document.getElementById('userEmail').value = user.email || '';
+                    document.getElementById('userPhone').value = user.phone || '';
+                    document.getElementById('userTypeSelect').value = user.userType;
+                    document.getElementById('userRole').value = user.roleId || '';
+                    document.getElementById('userOrg').value = user.organizationId || '';
+                });
+            }
+            document.getElementById('userModal').classList.add('show');
+        }
+
+        function closeUserModal() { document.getElementById('userModal').classList.remove('show'); }
+
+        function saveUser() {
+            var id = document.getElementById('userId').value;
+            var data = {
+                username: document.getElementById('userUsername').value,
+                realName: document.getElementById('userRealName').value,
+                email: document.getElementById('userEmail').value,
+                phone: document.getElementById('userPhone').value,
+                userType: parseInt(document.getElementById('userTypeSelect').value),
+                roleId: document.getElementById('userRole').value ? parseInt(document.getElementById('userRole').value) : null,
+                organizationId: document.getElementById('userOrg').value ? parseInt(document.getElementById('userOrg').value) : null
+            };
+            if (id) data.id = parseInt(id);
+            var pwd = document.getElementById('userPassword').value;
+            if (pwd) data.password = pwd;
+            else if (!id) data.password = '123456';
+            
+            fetch('/api/user/save', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(data)
+            }).then(r => r.json()).then(function(result) {
+                if (result.code === 200) { closeUserModal(); loadUsers(); }
+                else alert(result.message);
+            });
+        }
+
+        function editUser(id) { showUserModal(id); }
+
+        function deleteUser(id) {
+            if (confirm('确定删除该用户？')) {
+                fetch('/api/user/' + id, {method: 'DELETE'}).then(r => r.json()).then(function(result) {
+                    if (result.code === 200) loadUsers();
+                    else alert(result.message);
+                });
+            }
+        }
+
+        function showRoleModal(id) {
+            document.getElementById('roleModalTitle').textContent = id ? '编辑角色' : '新增角色';
+            document.getElementById('roleId').value = id || '';
+            document.getElementById('roleName').value = '';
+            document.getElementById('roleCode').value = '';
+            document.getElementById('roleDesc').value = '';
+            if (id) {
+                fetch('/api/role/' + id).then(r => r.json()).then(function(result) {
+                    var role = result.data;
+                    document.getElementById('roleName').value = role.name;
+                    document.getElementById('roleCode').value = role.code;
+                    document.getElementById('roleDesc').value = role.description || '';
+                });
+            }
+            document.getElementById('roleModal').classList.add('show');
+        }
+
+        function closeRoleModal() { document.getElementById('roleModal').classList.remove('show'); }
+
+        function saveRole() {
+            var id = document.getElementById('roleId').value;
+            var data = {
+                name: document.getElementById('roleName').value,
+                code: document.getElementById('roleCode').value,
+                description: document.getElementById('roleDesc').value
+            };
+            if (id) data.id = parseInt(id);
+            fetch('/api/role/save', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(data)
+            }).then(r => r.json()).then(function(result) {
+                if (result.code === 200) { closeRoleModal(); loadRoles(); }
+                else alert(result.message);
+            });
+        }
+
+        function editRole(id) { showRoleModal(id); }
+
+        function deleteRole(id) {
+            if (confirm('确定删除该角色？')) {
+                fetch('/api/role/' + id, {method: 'DELETE'}).then(r => r.json()).then(function(result) {
+                    if (result.code === 200) loadRoles();
+                    else alert(result.message);
+                });
+            }
+        }
+
+        function showOrgModal(id) {
+            document.getElementById('orgModalTitle').textContent = id ? '编辑机构' : '新增机构';
+            document.getElementById('orgId').value = id || '';
+            document.getElementById('orgName').value = '';
+            document.getElementById('orgCode').value = '';
+            document.getElementById('orgDesc').value = '';
+            
+            fetch('/api/org/list').then(r => r.json()).then(function(result) {
+                var orgs = result.data || [];
+                var select = document.getElementById('orgParent');
+                select.innerHTML = '<option value="0">顶级机构</option>';
+                orgs.forEach(function(o) {
+                    if (!id || o.id !== parseInt(id)) {
+                        select.innerHTML += '<option value="' + o.id + '">' + o.name + '</option>';
+                    }
+                });
+            });
+            
+            if (id) {
+                fetch('/api/org/' + id).then(r => r.json()).then(function(result) {
+                    var org = result.data;
+                    document.getElementById('orgName').value = org.name;
+                    document.getElementById('orgCode').value = org.code;
+                    document.getElementById('orgParent').value = org.parentId || 0;
+                    document.getElementById('orgDesc').value = org.description || '';
+                });
+            }
+            document.getElementById('orgModal').classList.add('show');
+        }
+
+        function closeOrgModal() { document.getElementById('orgModal').classList.remove('show'); }
+
+        function saveOrg() {
+            var id = document.getElementById('orgId').value;
+            var parentId = parseInt(document.getElementById('orgParent').value) || 0;
+            var data = {
+                name: document.getElementById('orgName').value,
+                code: document.getElementById('orgCode').value,
+                parentId: parentId,
+                level: parentId === 0 ? 1 : 2,
+                description: document.getElementById('orgDesc').value
+            };
+            if (id) data.id = parseInt(id);
+            fetch('/api/org/save', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(data)
+            }).then(r => r.json()).then(function(result) {
+                if (result.code === 200) { closeOrgModal(); loadOrgs(); }
+                else alert(result.message);
+            });
+        }
+
+        function editOrg(id) { showOrgModal(id); }
+
+        function deleteOrg(id) {
+            if (confirm('确定删除该机构？')) {
+                fetch('/api/org/' + id, {method: 'DELETE'}).then(r => r.json()).then(function(result) {
+                    if (result.code === 200) loadOrgs();
+                    else alert(result.message);
+                });
+            }
+        }
+
+        fetch('/current-user').then(r => r.json()).then(function(result) {
+            if (result.code === 200) {
+                document.getElementById('currentUserName').textContent = result.data.realName || result.data.username;
+            }
+        });
+
+        loadUsers();
+    </script>
+</body>
+</html>
